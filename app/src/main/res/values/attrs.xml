@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <declare-styleable name="MapView">
-        <attr name="map_background" format="integer"/>
+        <attr name="map_background" format="reference"/>
     </declare-styleable>
 </resources>
