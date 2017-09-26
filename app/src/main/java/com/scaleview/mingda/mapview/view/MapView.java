@@ -241,6 +241,7 @@ public final class MapView extends FrameLayout {
             holder = mAdapter.onCreateViewHolder(MapView.this, itemViewType);
         } else {
             holder = mHolderPool.get(itemViewType).get(0);
+            mHolderPool.get(itemViewType).remove(0);
         }
 
         return holder;
