@@ -10,13 +10,23 @@ import android.graphics.PointF;
 import android.support.annotation.AttrRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.os.TraceCompat;
+
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
 import com.scaleview.mingda.mapview.R;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+
 
 /**
  * 可缩放的地图控件
@@ -112,6 +122,12 @@ public final class MapView extends FrameLayout {
      * 水平位置最大偏移量
      */
     private int maWidthOffset = 150;
+    /**
+     * 储存holder的缓存
+     */
+    private HashMap<Integer, ArrayList<ViewHolder>> mHolderPool = new HashMap<>();
+
+    private Adapter mAdapter;
 
     public MapView(@NonNull Context context) {
         super(context);
@@ -144,6 +160,9 @@ public final class MapView extends FrameLayout {
 
         backgroundMap.setBackgroundResource(backgroundResId);
         addView(backgroundMap, 0, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
+
+
+
     }
 
     @Override
@@ -166,6 +185,66 @@ public final class MapView extends FrameLayout {
         float bitmapLeft = -leftPoint.x * scaleLevel;
         float bitmapTop = -leftPoint.y * scaleLevel;
         getChildAt(0).layout((int) bitmapLeft, (int) bitmapTop, (int) (bitmapLeft + bitmapSrc.getWidth() * scaleLevel), (int) (bitmapTop + bitmapSrc.getHeight() * scaleLevel));
+
+        if (mAdapter != null) {
+            for (int i = 0; i < mAdapter.getItemCount(); i++) {
+                int itemViewType = mAdapter.getItemViewType(i);
+                ViewHolder holder = getHolder(itemViewType);
+                mAdapter.onBindViewHolder(holder, i);
+                PointF position = mAdapter.onBindPosition(i);
+
+                if (isInScreen(position)) {
+
+                    if (holder.itemView.getParent() == null) {
+                        addView(holder.itemView);
+                    }
+                    int viewLeft = (int) ((position.x - leftPoint.x) * scaleLevel);
+                    int viewTop = (int) ((position.y - leftPoint.y) * scaleLevel);
+                    Log.i("xiaozhu", getChildCount() + "==="+i+"==="+viewLeft+"==="+viewTop);
+                    holder.itemView.layout(viewLeft, viewTop, viewLeft + holder.itemView.getMeasuredWidth(), viewTop + holder.itemView.getMeasuredHeight());
+                } else {
+                    removeView(holder.itemView);
+                    if (mHolderPool.get(itemViewType) == null) {
+                        ArrayList<ViewHolder> viewHolders = new ArrayList<>();
+                        viewHolders.add(holder);
+                        mHolderPool.put(itemViewType, viewHolders);
+                    } else {
+                        mHolderPool.get(itemViewType).add(holder);
+                    }
+
+                }
+            }
+        }
+
+
+    }
+
+    /**
+     * 判断点是否在区域里
+     *
+     * @param position
+     * @return
+     */
+    private boolean isInScreen(PointF position) {
+        return position.x > leftPoint.x && position.y > leftPoint.y && position.x < rightPoint.x && position.y < rightPoint.y;
+    }
+
+    /**
+     * 获取holder
+     *
+     * @param itemViewType
+     * @return
+     */
+    private ViewHolder getHolder(int itemViewType) {
+        ViewHolder holder;
+        if (mHolderPool.get(itemViewType) == null || mHolderPool.get(itemViewType).size() == 0) {
+            holder = mAdapter.onCreateViewHolder(MapView.this, itemViewType);
+        } else {
+            holder = mHolderPool.get(itemViewType).get(0);
+        }
+
+        return holder;
+
     }
 
     @Override
@@ -176,7 +255,7 @@ public final class MapView extends FrameLayout {
         }
         switch (event.getAction() & MotionEvent.ACTION_MASK) {
             case MotionEvent.ACTION_DOWN:
-                Log.i("xiaozhu", "ACTION_DOWN" + isMultiPoint);
+
                 lastX = event.getX();
                 lastY = event.getY();
 
@@ -187,12 +266,12 @@ public final class MapView extends FrameLayout {
                     float distance = calculateDistance(event);
                     float centerX = leftPoint.x + midPoint.x / scaleLevel;
                     float centerY = leftPoint.y + midPoint.y / scaleLevel;
-                    Log.i("xiaozhu", "before" + distance + "===" + scaleLevel + "===" + lastDistance + "==" + leftPoint.y + "===" + midPoint.y);
+
                     scaleLevel = distance * scaleLevel / lastDistance;
 
                     leftPoint.x = centerX - midPoint.x / scaleLevel;
                     leftPoint.y = centerY - midPoint.y / scaleLevel;
-                    Log.i("xiaozhu", "before" + distance + "===" + scaleLevel + "===" + lastDistance + "==" + leftPoint.y + "===" + midPoint.y);
+
 
                     updatePoint();
                     lastDistance = distance;
@@ -203,13 +282,13 @@ public final class MapView extends FrameLayout {
 
                     if (leftPoint.x < -maWidthOffset) {
                         leftPoint.x = -maWidthOffset;
-                    } else if (leftPoint.x > 0 && bitmapSrc.getWidth() > width && leftPoint.x > bitmapSrc.getWidth() - width / scaleLevel + maWidthOffset) {
+                    } else if (leftPoint.x > 0 && bitmapSrc.getWidth() * scaleLevel > width && leftPoint.x > bitmapSrc.getWidth() - width / scaleLevel + maWidthOffset) {
                         leftPoint.x = bitmapSrc.getWidth() - width / scaleLevel + maWidthOffset;
                     }
 
                     if (leftPoint.y < -maxHeightOffset) {
                         leftPoint.y = -maxHeightOffset;
-                    } else if (leftPoint.y > 0 && bitmapSrc.getHeight() > height && leftPoint.y > bitmapSrc.getHeight() - height / scaleLevel + maxHeightOffset) {
+                    } else if (leftPoint.y > 0 && bitmapSrc.getHeight() * scaleLevel > height && leftPoint.y > bitmapSrc.getHeight() - height / scaleLevel + maxHeightOffset) {
                         leftPoint.y = bitmapSrc.getHeight() - height / scaleLevel + maxHeightOffset;
                     }
 
@@ -219,7 +298,7 @@ public final class MapView extends FrameLayout {
                 break;
             case MotionEvent.ACTION_UP:
 
-                if (leftPoint.x < 0 || leftPoint.y < 0 || (leftPoint.x > 0 && bitmapSrc.getWidth() > width && leftPoint.x > bitmapSrc.getWidth() - width / scaleLevel) || (leftPoint.y > 0 && bitmapSrc.getHeight() > height && leftPoint.y > bitmapSrc.getHeight() - height / scaleLevel)) {
+                if (leftPoint.x < 0 || leftPoint.y < 0 || (leftPoint.x > 0 && bitmapSrc.getWidth() * scaleLevel > width && leftPoint.x > bitmapSrc.getWidth() - width / scaleLevel) || (leftPoint.y > 0 && bitmapSrc.getHeight() * scaleLevel > height && leftPoint.y > bitmapSrc.getHeight() - height / scaleLevel)) {
                     isAnmiting = true;
 
 
@@ -237,10 +316,10 @@ public final class MapView extends FrameLayout {
                         endY = 0;
 
                     }
-                    if (leftPoint.x > 0 && bitmapSrc.getWidth() > width && leftPoint.x > bitmapSrc.getWidth() - width / scaleLevel) {
+                    if (leftPoint.x > 0 && bitmapSrc.getWidth() * scaleLevel > width && leftPoint.x > bitmapSrc.getWidth() - width / scaleLevel) {
                         endX = bitmapSrc.getWidth() - width / scaleLevel;
                     }
-                    if (leftPoint.y > 0 && bitmapSrc.getHeight() > height && leftPoint.y > bitmapSrc.getHeight() - height / scaleLevel) {
+                    if (leftPoint.y > 0 && bitmapSrc.getHeight() * scaleLevel > height && leftPoint.y > bitmapSrc.getHeight() - height / scaleLevel) {
                         endY = bitmapSrc.getHeight() - height / scaleLevel;
                     }
 
@@ -263,39 +342,39 @@ public final class MapView extends FrameLayout {
                     valueAnimator.addListener(new Animator.AnimatorListener() {
                         @Override
                         public void onAnimationStart(Animator animation) {
-                            Log.i("xiaozhu", " onAnimationStart;");
+
                             isAnmiting = true;
                         }
 
                         @Override
                         public void onAnimationEnd(Animator animation) {
-                            Log.i("xiaozhu", " onAnimationEnd;");
+
                             isAnmiting = false;
                         }
 
                         @Override
                         public void onAnimationCancel(Animator animation) {
-                            Log.i("xiaozhu", " onAnimationCancel;");
+
                             isAnmiting = false;
                         }
 
                         @Override
                         public void onAnimationRepeat(Animator animation) {
-                            Log.i("xiaozhu", " onAnimationRepeat;");
+
 
                         }
                     });
                 }
                 break;
             case MotionEvent.ACTION_POINTER_DOWN:
-                Log.i("xiaozhu", "ACTION_POINTER_DOWN" + isMultiPoint);
+
                 isMultiPoint = true;
                 lastDistance = calculateDistance(event);
                 midPoint(midPoint, event);
                 break;
 
             case MotionEvent.ACTION_POINTER_UP:
-                Log.i("xiaozhu", "ACTION_POINTER_UP" + isMultiPoint);
+
                 isMultiPoint = false;
                 break;
         }
@@ -334,5 +413,141 @@ public final class MapView extends FrameLayout {
         float x = event.getX(0) + event.getX(1);
         float y = event.getY(0) + event.getY(1);
         point.set(x / 2, y / 2);
+    }
+
+    /**
+     * 设置 适配器
+     *
+     * @param mAdapter
+     */
+    public void setAdapter(Adapter mAdapter) {
+        this.mAdapter = mAdapter;
+    }
+
+    public Adapter getAdapter() {
+        return mAdapter;
+    }
+
+    public abstract static class Adapter<VH extends MapView.ViewHolder> {
+        /**
+         * an item.
+         * <p>
+         * This new ViewHolder should be constructed with a new View that can represent the items
+         * of the given type. You can either create a new View manually or inflate it from an XML
+         * layout file.
+         * <p>
+         * The new ViewHolder will be used to display items of the adapter using
+         * <p>
+         * different items in the data set, it is a good idea to cache references to sub views of
+         * the View to avoid unnecessary {@link View#findViewById(int)} calls.
+         *
+         * @param parent   The ViewGroup into which the new View will be added after it is bound to
+         *                 an adapter position.
+         * @param viewType The view type of the new View.
+         * @return A new ViewHolder that holds a View of the given view type.
+         * @see #getItemViewType(int)
+         */
+        public abstract VH onCreateViewHolder(ViewGroup parent, int viewType);
+
+        /**
+         * Called by RecyclerView to display the data at the specified position. This method should
+         * <p>
+         * position.
+         * <p>
+         * Note that unlike {@link android.widget.ListView}, RecyclerView will not call this method
+         * again if the position of the item changes in the data set unless the item itself is
+         * invalidated or the new position cannot be determined. For this reason, you should only
+         * use the <code>position</code> parameter while acquiring the related data item inside
+         * this method and should not keep a copy of it. If you need the position of an item later
+         * <p>
+         * have the updated adapter position.
+         * <p>
+         * handle efficient partial bind.
+         *
+         * @param holder   The ViewHolder which should be updated to represent the contents of the
+         *                 item at the given position in the data set.
+         * @param position The position of the item within the adapter's data set.
+         */
+        public abstract void onBindViewHolder(VH holder, int position);
+
+        /**
+         * 返回这个点所在的坐标
+         *
+         * @param position
+         * @return
+         */
+        public abstract PointF onBindPosition(int position);
+
+
+        /**
+         * @param position position to query
+         * @return integer value identifying the type of the view needed to represent the item at
+         * <code>position</code>. Type codes need not be contiguous.
+         */
+        public int getItemViewType(int position) {
+            return 0;
+        }
+
+
+        /**
+         * @param position Adapter position to query
+         * @return the stable ID of the item at position
+         */
+        public long getItemId(int position) {
+            return NO_ID;
+        }
+
+        /**
+         * Returns the total number of items in the data set held by the adapter.
+         *
+         * @return The total number of items in this adapter.
+         */
+        public abstract int getItemCount();
+
+
+        /**
+         * @see #notifyItemChanged(int)
+         * @see #notifyItemRemoved(int)
+         */
+        public final void notifyDataSetChanged() {
+
+        }
+
+        /**
+         * @param position Position of the item that has changed
+         */
+        public final void notifyItemChanged(int position) {
+
+        }
+
+
+        /**
+         * @param fromPosition Previous position of the item.
+         * @param toPosition   New position of the item.
+         */
+        public final void notifyItemMoved(int fromPosition, int toPosition) {
+
+        }
+
+
+        /**
+         * @param position Position of the item that has now been removed
+         */
+        public final void notifyItemRemoved(int position) {
+
+        }
+
+    }
+
+    public static abstract class ViewHolder {
+
+        public final View itemView;
+
+        public ViewHolder(View itemView) {
+            if (itemView == null) {
+                throw new IllegalArgumentException("itemView may not be null");
+            }
+            this.itemView = itemView;
+        }
     }
 }
