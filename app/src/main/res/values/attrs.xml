@@ -2,5 +2,6 @@
 <resources>
     <declare-styleable name="MapView">
         <attr name="map_background" format="reference"/>
+        <attr name="slide_background" format="reference|string"/>
     </declare-styleable>
 </resources>
