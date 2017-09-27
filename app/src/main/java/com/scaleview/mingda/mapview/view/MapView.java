@@ -126,8 +126,18 @@ public final class MapView extends FrameLayout {
      * 储存holder的缓存
      */
     private HashMap<Integer, ArrayList<ViewHolder>> mHolderPool = new HashMap<>();
-
+    /**
+     * 储存添加在控件里面的控件
+     */
+    private HashMap<Integer, ViewHolder> addedPools = new HashMap<>();
+    /**
+     * 适配器
+     */
     private Adapter mAdapter;
+    /**
+     * 背景
+     */
+    private ImageView backgroundMap;
 
     public MapView(@NonNull Context context) {
         super(context);
@@ -155,12 +165,11 @@ public final class MapView extends FrameLayout {
 //        typedArray.getColor(R.styleable.MapView_slide_background,)
         TypedArray typedArray = getContext().obtainStyledAttributes(attrs, R.styleable.MapView);
         backgroundResId = typedArray.getResourceId(R.styleable.MapView_map_background, R.drawable.bg);
-        ImageView backgroundMap = new ImageView(getContext());
+        backgroundMap = new ImageView(getContext());
         bitmapSrc = BitmapFactory.decodeResource(getResources(), backgroundResId);
 
         backgroundMap.setBackgroundResource(backgroundResId);
         addView(backgroundMap, 0, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
-
 
 
     }
@@ -181,43 +190,62 @@ public final class MapView extends FrameLayout {
 
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+
+//        for (int i = 1; i < getChildCount(); i++) {
+//            View child = getChildAt(i);
+//            int tag = (int) child.getTag();
+//            PointF position = mAdapter.onBindPosition(tag);
+//            if (!isInScreen(position)) {
+//
+//                if (mHolderPool.get(mAdapter.getItemViewType(tag)) == null) {
+//                    mHolderPool.put(mAdapter.getItemViewType(tag), new ArrayList<ViewHolder>());
+//                }
+//                mHolderPool.get(mAdapter.getItemViewType(tag)).add(addedPools.get(tag));
+//
+//                removeView(child);
+//                addedPools.remove(tag);
+//            }
+//            removeViewAt(i);
+//        }
+
+//        if (mAdapter != null) {
+//            for (int i = 0; i < mAdapter.getItemCount(); i++) {
+//                int itemViewType = mAdapter.getItemViewType(i);
+//
+//                PointF position = mAdapter.onBindPosition(i);
+//
+//                if (isInScreen(position)) {
+//                    if (addedPools.get(i) != null) {
+//                        return;
+//                    }
+//                    ViewHolder holder = getHolder(itemViewType);
+//                    Log.i("xiaozhu", holder + "");
+//                    mAdapter.onBindViewHolder(holder, i);
+//                    if (holder.itemView.getParent() == null) {
+//                        addView(holder.itemView);
+//                        holder.itemView.setTag(i);
+//                    }
+//                }
+//            }
         super.onLayout(changed, left, top, right, bottom);
         float bitmapLeft = -leftPoint.x * scaleLevel;
         float bitmapTop = -leftPoint.y * scaleLevel;
-        getChildAt(0).layout((int) bitmapLeft, (int) bitmapTop, (int) (bitmapLeft + bitmapSrc.getWidth() * scaleLevel), (int) (bitmapTop + bitmapSrc.getHeight() * scaleLevel));
-
+        backgroundMap.layout((int) bitmapLeft, (int) bitmapTop, (int) (bitmapLeft + bitmapSrc.getWidth() * scaleLevel), (int) (bitmapTop + bitmapSrc.getHeight() * scaleLevel));
         if (mAdapter != null) {
-            for (int i = 0; i < mAdapter.getItemCount(); i++) {
-                int itemViewType = mAdapter.getItemViewType(i);
-                ViewHolder holder = getHolder(itemViewType);
-                mAdapter.onBindViewHolder(holder, i);
-                PointF position = mAdapter.onBindPosition(i);
+            for (int i = 1; i < getChildCount(); i++) {
+                int tag = (int) getChildAt(i).getTag();
+                PointF position = mAdapter.onBindPosition(tag);
+                int viewLeft = (int) ((position.x - leftPoint.x) * scaleLevel);
+                int viewTop = (int) ((position.y - leftPoint.y) * scaleLevel);
+                getChildAt(i).layout(viewLeft, viewTop, viewLeft + getChildAt(i).getMeasuredWidth(), viewTop + getChildAt(i).getMeasuredHeight());
 
-                if (isInScreen(position)) {
-
-                    if (holder.itemView.getParent() == null) {
-                        addView(holder.itemView);
-                    }
-                    int viewLeft = (int) ((position.x - leftPoint.x) * scaleLevel);
-                    int viewTop = (int) ((position.y - leftPoint.y) * scaleLevel);
-                    Log.i("xiaozhu", getChildCount() + "==="+i+"==="+viewLeft+"==="+viewTop);
-                    holder.itemView.layout(viewLeft, viewTop, viewLeft + holder.itemView.getMeasuredWidth(), viewTop + holder.itemView.getMeasuredHeight());
-                } else {
-                    removeView(holder.itemView);
-                    if (mHolderPool.get(itemViewType) == null) {
-                        ArrayList<ViewHolder> viewHolders = new ArrayList<>();
-                        viewHolders.add(holder);
-                        mHolderPool.put(itemViewType, viewHolders);
-                    } else {
-                        mHolderPool.get(itemViewType).add(holder);
-                    }
-
-                }
             }
+
         }
 
-
+//        Log.i("xiaozhu", getChildCount() + "getChildCount");
     }
+
 
     /**
      * 判断点是否在区域里
@@ -225,6 +253,7 @@ public final class MapView extends FrameLayout {
      * @param position
      * @return
      */
+
     private boolean isInScreen(PointF position) {
         return position.x > leftPoint.x && position.y > leftPoint.y && position.x < rightPoint.x && position.y < rightPoint.y;
     }
@@ -279,7 +308,7 @@ public final class MapView extends FrameLayout {
                 } else {
 
                     leftPoint.set(leftPoint.x + (lastX - event.getX()) / scaleLevel, leftPoint.y + (lastY - event.getY()) / scaleLevel);
-                    updatePoint();
+
 
                     if (leftPoint.x < -maWidthOffset) {
                         leftPoint.x = -maWidthOffset;
@@ -292,6 +321,8 @@ public final class MapView extends FrameLayout {
                     } else if (leftPoint.y > 0 && bitmapSrc.getHeight() * scaleLevel > height && leftPoint.y > bitmapSrc.getHeight() - height / scaleLevel + maxHeightOffset) {
                         leftPoint.y = bitmapSrc.getHeight() - height / scaleLevel + maxHeightOffset;
                     }
+
+                    updatePoint();
 
                     lastX = event.getX();
                     lastY = event.getY();
@@ -386,6 +417,28 @@ public final class MapView extends FrameLayout {
     }
 
     /**
+     * 更新数据
+     */
+    public void notifyDataChanged() {
+        removeAllViews();
+        addView(backgroundMap, 0);
+        if (mAdapter != null) {
+            for (int i = 0; i < mAdapter.getItemCount(); i++) {
+                int itemViewType = mAdapter.getItemViewType(i);
+
+                ViewHolder holder = getHolder(itemViewType);
+                Log.i("xiaozhu", holder + "");
+                mAdapter.onBindViewHolder(holder, i);
+                if (holder.itemView.getParent() == null) {
+                    addView(holder.itemView);
+                    holder.itemView.setTag(i);
+                }
+            }
+        }
+    }
+
+
+    /**
      * 更新四个顶点
      */
     private void updatePoint() {
@@ -423,6 +476,22 @@ public final class MapView extends FrameLayout {
      */
     public void setAdapter(Adapter mAdapter) {
         this.mAdapter = mAdapter;
+        if (mAdapter != null) {
+            for (int i = 0; i < mAdapter.getItemCount(); i++) {
+                int itemViewType = mAdapter.getItemViewType(i);
+
+                PointF position = mAdapter.onBindPosition(i);
+
+
+                ViewHolder holder = getHolder(itemViewType);
+                Log.i("xiaozhu", holder + "");
+                mAdapter.onBindViewHolder(holder, i);
+                if (holder.itemView.getParent() == null) {
+                    addView(holder.itemView);
+                    holder.itemView.setTag(i);
+                }
+            }
+        }
     }
 
     public Adapter getAdapter() {
@@ -511,7 +580,6 @@ public final class MapView extends FrameLayout {
          * @see #notifyItemRemoved(int)
          */
         public final void notifyDataSetChanged() {
-
         }
 
         /**
@@ -551,4 +619,5 @@ public final class MapView extends FrameLayout {
             this.itemView = itemView;
         }
     }
+
 }
