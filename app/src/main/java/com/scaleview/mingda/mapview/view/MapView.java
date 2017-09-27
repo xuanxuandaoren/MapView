@@ -138,6 +138,10 @@ public final class MapView extends FrameLayout {
      * 背景
      */
     private ImageView backgroundMap;
+    /**
+     * 转化为单指操作
+     */
+    private boolean isSwitchToSingle = false;
 
     public MapView(@NonNull Context context) {
         super(context);
@@ -280,6 +284,7 @@ public final class MapView extends FrameLayout {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         super.onTouchEvent(event);
+        Log.i("xiaozhu", event.getAction() + "===");
         if (isAnmiting) {
             return false;
         }
@@ -307,22 +312,28 @@ public final class MapView extends FrameLayout {
                     lastDistance = distance;
                 } else {
 
-                    leftPoint.set(leftPoint.x + (lastX - event.getX()) / scaleLevel, leftPoint.y + (lastY - event.getY()) / scaleLevel);
+                    if (!isSwitchToSingle) {
+
+                        leftPoint.set(leftPoint.x + (lastX - event.getX()) / scaleLevel, leftPoint.y + (lastY - event.getY()) / scaleLevel);
 
 
-                    if (leftPoint.x < -maWidthOffset) {
-                        leftPoint.x = -maWidthOffset;
-                    } else if (leftPoint.x > 0 && bitmapSrc.getWidth() * scaleLevel > width && leftPoint.x > bitmapSrc.getWidth() - width / scaleLevel + maWidthOffset) {
-                        leftPoint.x = bitmapSrc.getWidth() - width / scaleLevel + maWidthOffset;
+                        if (leftPoint.x < -maWidthOffset) {
+                            leftPoint.x = -maWidthOffset;
+                        } else if (leftPoint.x > 0 && bitmapSrc.getWidth() * scaleLevel > width && leftPoint.x > bitmapSrc.getWidth() - width / scaleLevel + maWidthOffset) {
+                            leftPoint.x = bitmapSrc.getWidth() - width / scaleLevel + maWidthOffset;
+                        }
+
+                        if (leftPoint.y < -maxHeightOffset) {
+                            leftPoint.y = -maxHeightOffset;
+                        } else if (leftPoint.y > 0 && bitmapSrc.getHeight() * scaleLevel > height && leftPoint.y > bitmapSrc.getHeight() - height / scaleLevel + maxHeightOffset) {
+                            leftPoint.y = bitmapSrc.getHeight() - height / scaleLevel + maxHeightOffset;
+                        }
+
+                        updatePoint();
+
+                    } else {
+                        isSwitchToSingle = false;
                     }
-
-                    if (leftPoint.y < -maxHeightOffset) {
-                        leftPoint.y = -maxHeightOffset;
-                    } else if (leftPoint.y > 0 && bitmapSrc.getHeight() * scaleLevel > height && leftPoint.y > bitmapSrc.getHeight() - height / scaleLevel + maxHeightOffset) {
-                        leftPoint.y = bitmapSrc.getHeight() - height / scaleLevel + maxHeightOffset;
-                    }
-
-                    updatePoint();
 
 
                 }
@@ -407,7 +418,7 @@ public final class MapView extends FrameLayout {
                 break;
 
             case MotionEvent.ACTION_POINTER_UP:
-
+                isSwitchToSingle = true;
                 isMultiPoint = false;
                 break;
         }
@@ -428,7 +439,7 @@ public final class MapView extends FrameLayout {
                 int itemViewType = mAdapter.getItemViewType(i);
 
                 ViewHolder holder = getHolder(itemViewType);
-                Log.i("xiaozhu", holder + "");
+
                 mAdapter.onBindViewHolder(holder, i);
                 if (holder.itemView.getParent() == null) {
                     addView(holder.itemView);
@@ -485,7 +496,7 @@ public final class MapView extends FrameLayout {
 
 
                 ViewHolder holder = getHolder(itemViewType);
-                Log.i("xiaozhu", holder + "");
+
                 mAdapter.onBindViewHolder(holder, i);
                 if (holder.itemView.getParent() == null) {
                     addView(holder.itemView);

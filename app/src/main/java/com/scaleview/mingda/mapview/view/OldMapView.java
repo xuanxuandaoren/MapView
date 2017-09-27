@@ -233,25 +233,25 @@ public class OldMapView extends FrameLayout {
                     valueAnimator.addListener(new Animator.AnimatorListener() {
                         @Override
                         public void onAnimationStart(Animator animation) {
-                            Log.i("xiaozhu", " onAnimationStart;");
+
                             isAnmiting = true;
                         }
 
                         @Override
                         public void onAnimationEnd(Animator animation) {
-                            Log.i("xiaozhu", " onAnimationEnd;");
+
                             isAnmiting = false;
                         }
 
                         @Override
                         public void onAnimationCancel(Animator animation) {
-                            Log.i("xiaozhu", " onAnimationCancel;");
+
                             isAnmiting = false;
                         }
 
                         @Override
                         public void onAnimationRepeat(Animator animation) {
-                            Log.i("xiaozhu", " onAnimationRepeat;");
+
 
                         }
                     });

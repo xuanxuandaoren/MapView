@@ -4,7 +4,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 
 import com.scaleview.mingda.mapview.view.MapView;
-import com.scaleview.mingda.mapview.view.TestAdapter;
+import com.scaleview.mingda.mapview.adapter.TestAdapter;
 
 public class MainActivity extends AppCompatActivity {
 

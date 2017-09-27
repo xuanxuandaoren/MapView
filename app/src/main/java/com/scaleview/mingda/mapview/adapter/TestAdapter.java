@@ -1,4 +1,4 @@
-package com.scaleview.mingda.mapview.view;
+package com.scaleview.mingda.mapview.adapter;
 
 import android.content.Context;
 import android.graphics.PointF;
@@ -6,10 +6,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.scaleview.mingda.mapview.R;
-
-import java.util.zip.Inflater;
+import com.scaleview.mingda.mapview.view.MapView;
 
 /**
  * Created by 玉光 on 2017-9-26.
@@ -31,6 +31,7 @@ public class TestAdapter extends MapView.Adapter<TestAdapter.TextHolder> {
 
     @Override
     public void onBindViewHolder(TextHolder holder, int position) {
+        holder.itemView.setTag(position);
         holder.textView.setText(position + "");
     }
 
@@ -48,9 +49,16 @@ public class TestAdapter extends MapView.Adapter<TestAdapter.TextHolder> {
 
         public TextView textView;
 
-        public TextHolder(View itemView) {
+        public TextHolder(final View itemView) {
             super(itemView);
             textView = (TextView) itemView.findViewById(R.id.textview);
+            textView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Toast.makeText(context, "我被点击了"+itemView.getTag(), Toast.LENGTH_SHORT).show();
+                }
+            });
+
         }
     }
 }
