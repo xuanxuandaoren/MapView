@@ -324,9 +324,10 @@ public final class MapView extends FrameLayout {
 
                     updatePoint();
 
-                    lastX = event.getX();
-                    lastY = event.getY();
+
                 }
+                lastX = event.getX();
+                lastY = event.getY();
                 break;
             case MotionEvent.ACTION_UP:
 
